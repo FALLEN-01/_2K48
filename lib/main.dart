@@ -49,12 +49,52 @@ class _Game2048State extends State<Game2048> {
     won = false;
     _addRandomTile();
     _addRandomTile();
-    setState(() {});
   }
 
   void _changeGridSize(int newSize) {
     gridSize = newSize;
-    _initializeGame();
+    grid = List.generate(gridSize, (_) => List.filled(gridSize, 0));
+    score = 0;
+    gameOver = false;
+    won = false;
+    _addRandomTile();
+    _addRandomTile();
+  }
+
+  double _getGridSize() {
+    switch (gridSize) {
+      case 4:
+        return 320;
+      case 6:
+        return 360;
+      case 8:
+        return 400;
+      case 10:
+        return 440;
+      default:
+        return 320;
+    }
+  }
+
+  double _getFontSize(int value) {
+    double baseFontSize;
+    switch (gridSize) {
+      case 4:
+        baseFontSize = value >= 1000 ? 20 : 28;
+        break;
+      case 6:
+        baseFontSize = value >= 1000 ? 16 : 22;
+        break;
+      case 8:
+        baseFontSize = value >= 1000 ? 14 : 18;
+        break;
+      case 10:
+        baseFontSize = value >= 1000 ? 12 : 16;
+        break;
+      default:
+        baseFontSize = value >= 1000 ? 20 : 28;
+    }
+    return baseFontSize;
   }
 
   void _addRandomTile() {
@@ -103,7 +143,7 @@ class _Game2048State extends State<Game2048> {
           score += row[j];
           if (row[j] == 2048 && !won) {
             won = true;
-            _showWinDialog();
+            Future.microtask(() => _showWinDialog());
           }
           row.removeAt(j + 1);
         }
@@ -120,11 +160,11 @@ class _Game2048State extends State<Game2048> {
 
     if (moved) {
       _addRandomTile();
-      setState(() {});
       if (!_canMove()) {
         gameOver = true;
-        _showGameOverDialog();
+        Future.microtask(() => _showGameOverDialog());
       }
+      setState(() {});
     }
   }
 
@@ -138,7 +178,7 @@ class _Game2048State extends State<Game2048> {
           score += row[j];
           if (row[j] == 2048 && !won) {
             won = true;
-            _showWinDialog();
+            Future.microtask(() => _showWinDialog());
           }
           row.removeAt(j - 1);
           j--;
@@ -156,11 +196,11 @@ class _Game2048State extends State<Game2048> {
 
     if (moved) {
       _addRandomTile();
-      setState(() {});
       if (!_canMove()) {
         gameOver = true;
-        _showGameOverDialog();
+        Future.microtask(() => _showGameOverDialog());
       }
+      setState(() {});
     }
   }
 
@@ -178,7 +218,7 @@ class _Game2048State extends State<Game2048> {
           score += column[i];
           if (column[i] == 2048 && !won) {
             won = true;
-            _showWinDialog();
+            Future.microtask(() => _showWinDialog());
           }
           column.removeAt(i + 1);
         }
@@ -195,11 +235,11 @@ class _Game2048State extends State<Game2048> {
 
     if (moved) {
       _addRandomTile();
-      setState(() {});
       if (!_canMove()) {
         gameOver = true;
-        _showGameOverDialog();
+        Future.microtask(() => _showGameOverDialog());
       }
+      setState(() {});
     }
   }
 
@@ -217,7 +257,7 @@ class _Game2048State extends State<Game2048> {
           score += column[i];
           if (column[i] == 2048 && !won) {
             won = true;
-            _showWinDialog();
+            Future.microtask(() => _showWinDialog());
           }
           column.removeAt(i - 1);
           i--;
@@ -235,11 +275,11 @@ class _Game2048State extends State<Game2048> {
 
     if (moved) {
       _addRandomTile();
-      setState(() {});
       if (!_canMove()) {
         gameOver = true;
-        _showGameOverDialog();
+        Future.microtask(() => _showGameOverDialog());
       }
+      setState(() {});
     }
   }
 
@@ -337,15 +377,58 @@ class _Game2048State extends State<Game2048> {
         backgroundColor: Colors.orange[600],
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          // Grid size dropdown in navbar right side
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: DropdownButton<int>(
+              value: gridSize,
+              dropdownColor: Colors.orange[600],
+              underline: const SizedBox(),
+              icon: const Icon(Icons.grid_view, color: Colors.white),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+              items: const [
+                DropdownMenuItem<int>(
+                  value: 4,
+                  child: Text('4x4', style: TextStyle(color: Colors.white)),
+                ),
+                DropdownMenuItem<int>(
+                  value: 6,
+                  child: Text('6x6', style: TextStyle(color: Colors.white)),
+                ),
+                DropdownMenuItem<int>(
+                  value: 8,
+                  child: Text('8x8', style: TextStyle(color: Colors.white)),
+                ),
+                DropdownMenuItem<int>(
+                  value: 10,
+                  child: Text('10x10', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+              onChanged: (int? newValue) {
+                if (newValue != null) {
+                  setState(() {
+                    _changeGridSize(newValue);
+                  });
+                }
+              },
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // Score and New Game button
+          // Score and New Game button row
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Score display
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -364,47 +447,30 @@ class _Game2048State extends State<Game2048> {
                     ),
                   ),
                 ),
+
+                // New Game button
                 ElevatedButton(
-                  onPressed: _initializeGame,
+                  onPressed: () {
+                    setState(() {
+                      _initializeGame();
+                    });
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange[600],
                     foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                   ),
-                  child: const Text('New Game'),
+                  child: const Text(
+                    'New Game',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
           ),
-
-          // Grid size selector
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('Grid Size: ', style: TextStyle(fontSize: 16)),
-                const SizedBox(width: 10),
-                SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment<int>(
-                      value: 4,
-                      label: Text('4x4'),
-                    ),
-                    ButtonSegment<int>(
-                      value: 6,
-                      label: Text('6x6'),
-                    ),
-                  ],
-                  selected: {gridSize},
-                  onSelectionChanged: (Set<int> newSelection) {
-                    _changeGridSize(newSelection.first);
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 10),
 
           // Game instructions
           const Padding(
@@ -450,26 +516,28 @@ class _Game2048State extends State<Game2048> {
                     }
                   },
                   child: SizedBox(
-                    width: gridSize == 4 ? 320 : 360,
-                    height: gridSize == 4 ? 320 : 360,
+                    width: _getGridSize(),
+                    height: _getGridSize(),
                     child: GridView.builder(
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate:
-                          SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: gridSize,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 8,
-                          ),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: gridSize,
+                        crossAxisSpacing: gridSize >= 8 ? 4 : 8,
+                        mainAxisSpacing: gridSize >= 8 ? 4 : 8,
+                      ),
                       itemCount: gridSize * gridSize,
                       itemBuilder: (context, index) {
                         final i = index ~/ gridSize;
                         final j = index % gridSize;
                         final value = grid[i][j];
 
-                        return Container(
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
                           decoration: BoxDecoration(
                             color: _getTileColor(value),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(
+                              gridSize >= 8 ? 2 : 4,
+                            ),
                           ),
                           child: Center(
                             child: value == 0
@@ -477,9 +545,7 @@ class _Game2048State extends State<Game2048> {
                                 : Text(
                                     '$value',
                                     style: TextStyle(
-                                      fontSize: gridSize == 4
-                                          ? (value >= 1000 ? 24 : 32)
-                                          : (value >= 1000 ? 18 : 24),
+                                      fontSize: _getFontSize(value),
                                       fontWeight: FontWeight.bold,
                                       color: _getTextColor(value),
                                     ),
