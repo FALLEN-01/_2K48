@@ -12,7 +12,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '2048 Game',
+      title: '2K48 Game',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.orange),
@@ -37,7 +37,7 @@ class _Game2048State extends State<Game2048> {
   int highScore = 0;
   bool gameOver = false;
   bool won = false;
-  
+
   // Undo functionality
   List<List<int>>? previousGrid;
   int? previousScore;
@@ -100,83 +100,52 @@ class _Game2048State extends State<Game2048> {
   }
 
   void _undo() {
-    if (canUndo && previousGrid != null && previousScore != null) {
+    if (canUndo && previousGrid != null && previousScore != null && !gameOver) {
       setState(() {
         grid = previousGrid!.map((row) => List<int>.from(row)).toList();
         score = previousScore!;
-        gameOver = false;
-        won = false;
-        canUndo = false;
+        // Don't reset gameOver or won state from previous move
+        canUndo = false; // Disable undo after use
         previousGrid = null;
         previousScore = null;
       });
     }
   }
 
+  void _showComingSoonDialog(int size) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('${size}x$size Grid'),
+          content: const Text(
+            'Coming Soon!\n\nThis grid size will be available in a future update.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   double _getGridSize() {
-    switch (gridSize) {
-      case 4:
-        return 320;
-      case 6:
-        return 350;
-      case 8:
-        return 370;
-      case 10:
-        return 390;
-      default:
-        return 320;
-    }
+    return 320; // Fixed size for 4x4
   }
 
   double _getFontSize(int value) {
-    double baseFontSize;
-    switch (gridSize) {
-      case 4:
-        baseFontSize = value >= 1000 ? 22 : 30;
-        break;
-      case 6:
-        baseFontSize = value >= 1000 ? 16 : 20;
-        break;
-      case 8:
-        baseFontSize = value >= 1000 ? 12 : 16;
-        break;
-      case 10:
-        baseFontSize = value >= 1000 ? 10 : 14;
-        break;
-      default:
-        baseFontSize = value >= 1000 ? 22 : 30;
-    }
-    return baseFontSize;
+    return value >= 1000 ? 22 : 30; // Fixed sizes for 4x4
   }
 
   double _getSpacing() {
-    switch (gridSize) {
-      case 4:
-        return 8;
-      case 6:
-        return 6;
-      case 8:
-        return 4;
-      case 10:
-        return 3;
-      default:
-        return 8;
-    }
+    return 8; // Fixed spacing for 4x4
   }
 
   double _getBorderRadius() {
-    switch (gridSize) {
-      case 4:
-        return 6;
-      case 6:
-        return 4;
-      case 8:
-        return 3;
-      case 10:
-        return 2;
-      default:
-        return 6;
-    }
+    return 6; // Fixed border radius for 4x4
   }
 
   void _addRandomTile() {
@@ -217,7 +186,8 @@ class _Game2048State extends State<Game2048> {
 
   void _moveLeft() {
     if (gameOver) return;
-    
+
+    // Save state before making the move
     _saveState();
     bool moved = false;
 
@@ -255,19 +225,23 @@ class _Game2048State extends State<Game2048> {
     if (moved) {
       _addRandomTile();
       _updateHighScore();
-      canUndo = true;
+      canUndo = true; // Enable undo only after a successful move
       if (!_canMove()) {
         gameOver = true;
       }
       setState(() {});
     } else {
+      // If no move was made, don't save state or enable undo
       canUndo = false;
+      previousGrid = null;
+      previousScore = null;
     }
   }
 
   void _moveRight() {
     if (gameOver) return;
-    
+
+    // Save state before making the move
     _saveState();
     bool moved = false;
 
@@ -307,19 +281,23 @@ class _Game2048State extends State<Game2048> {
     if (moved) {
       _addRandomTile();
       _updateHighScore();
-      canUndo = true;
+      canUndo = true; // Enable undo only after a successful move
       if (!_canMove()) {
         gameOver = true;
       }
       setState(() {});
     } else {
+      // If no move was made, don't save state or enable undo
       canUndo = false;
+      previousGrid = null;
+      previousScore = null;
     }
   }
 
   void _moveUp() {
     if (gameOver) return;
-    
+
+    // Save state before making the move
     _saveState();
     bool moved = false;
 
@@ -357,19 +335,23 @@ class _Game2048State extends State<Game2048> {
     if (moved) {
       _addRandomTile();
       _updateHighScore();
-      canUndo = true;
+      canUndo = true; // Enable undo only after a successful move
       if (!_canMove()) {
         gameOver = true;
       }
       setState(() {});
     } else {
+      // If no move was made, don't save state or enable undo
       canUndo = false;
+      previousGrid = null;
+      previousScore = null;
     }
   }
 
   void _moveDown() {
     if (gameOver) return;
-    
+
+    // Save state before making the move
     _saveState();
     bool moved = false;
 
@@ -409,69 +391,17 @@ class _Game2048State extends State<Game2048> {
     if (moved) {
       _addRandomTile();
       _updateHighScore();
-      canUndo = true;
+      canUndo = true; // Enable undo only after a successful move
       if (!_canMove()) {
         gameOver = true;
       }
       setState(() {});
     } else {
+      // If no move was made, don't save state or enable undo
       canUndo = false;
+      previousGrid = null;
+      previousScore = null;
     }
-  }
-
-  void _showWinDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('🎉 You Win!'),
-          content: const Text(
-            'You reached 2048! Continue playing or start a new game.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Continue'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _initializeGame();
-              },
-              child: const Text('New Game'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showGameOverDialog() {
-    bool newHighScore = score == highScore && score > 0;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(newHighScore ? '🎉 New High Score!' : '💀 Game Over'),
-          content: Text(
-            newHighScore
-                ? 'Congratulations! New high score: $score\nTry to beat it!'
-                : 'Final Score: $score\nHigh Score: $highScore\nTry again?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _initializeGame();
-              },
-              child: const Text('New Game'),
-            ),
-          ],
-        );
-      },
-    );
   }
 
   Color _getTileColor(int value) {
@@ -514,7 +444,28 @@ class _Game2048State extends State<Game2048> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('2048'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                '2K',
+                style: TextStyle(
+                  color: Colors.orange[600],
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text('48'),
+          ],
+        ),
         backgroundColor: Colors.orange[600],
         foregroundColor: Colors.white,
         elevation: 0,
@@ -552,9 +503,13 @@ class _Game2048State extends State<Game2048> {
               ],
               onChanged: (int? newValue) {
                 if (newValue != null) {
-                  setState(() {
-                    _changeGridSize(newValue);
-                  });
+                  if (newValue == 4) {
+                    setState(() {
+                      _changeGridSize(newValue);
+                    });
+                  } else {
+                    _showComingSoonDialog(newValue);
+                  }
                 }
               },
             ),
@@ -636,25 +591,47 @@ class _Game2048State extends State<Game2048> {
                   ],
                 ),
 
-                // New Game button
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _initializeGame();
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange[600],
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
+                // New Game and Undo buttons
+                Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: canUndo ? _undo : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: canUndo
+                            ? Colors.blue[600]
+                            : Colors.grey[400],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: const Icon(Icons.undo, size: 18),
                     ),
-                  ),
-                  child: const Text(
-                    'New Game',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _initializeGame();
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange[600],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: const Text(
+                        'New Game',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -664,126 +641,259 @@ class _Game2048State extends State<Game2048> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Text(
-              'Swipe to move tiles. When two tiles with the same number touch, they merge into one!',
+              'Welcome to 2K48! Swipe to move tiles. When two tiles with the same number touch, they merge into one!',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: gridSize >= 8 ? 12 : 14,
-                color: Colors.grey,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
           ),
 
-          SizedBox(height: gridSize >= 8 ? 6 : 10),
+          const SizedBox(height: 10),
 
-          // Game Grid
+          // Game Grid with overlay
           Expanded(
             child: Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: gridSize >= 8 ? 12.0 : 16.0,
-                ),
-                child: Container(
-                  padding: EdgeInsets.all(gridSize >= 8 ? 4 : 6),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[400],
-                    borderRadius: BorderRadius.circular(gridSize >= 8 ? 8 : 12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: gridSize >= 8 ? 6 : 8,
-                        offset: const Offset(0, 4),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Stack(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[400],
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  child: GestureDetector(
-                    onPanEnd: (details) {
-                      if (gameOver) return;
+                      child: GestureDetector(
+                        onPanEnd: (details) {
+                          if (gameOver) return;
 
-                      final velocity = details.velocity.pixelsPerSecond;
-                      final dx = velocity.dx;
-                      final dy = velocity.dy;
+                          final velocity = details.velocity.pixelsPerSecond;
+                          final dx = velocity.dx;
+                          final dy = velocity.dy;
 
-                      if (dx.abs() > dy.abs()) {
-                        if (dx > 0) {
-                          _moveRight();
-                        } else {
-                          _moveLeft();
-                        }
-                      } else {
-                        if (dy > 0) {
-                          _moveDown();
-                        } else {
-                          _moveUp();
-                        }
-                      }
-                    },
-                    child: SizedBox(
-                      width: _getGridSize(),
-                      height: _getGridSize(),
-                      child: GridView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: gridSize,
-                          crossAxisSpacing: _getSpacing(),
-                          mainAxisSpacing: _getSpacing(),
-                        ),
-                        itemCount: gridSize * gridSize,
-                        itemBuilder: (context, index) {
-                          final i = index ~/ gridSize;
-                          final j = index % gridSize;
-                          final value = grid[i][j];
-
-                          return Container(
-                            decoration: BoxDecoration(
-                              color: _getTileColor(value),
-                              borderRadius: BorderRadius.circular(
-                                _getBorderRadius(),
-                              ),
-                              boxShadow: value != 0
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.1),
-                                        blurRadius: 2,
-                                        offset: const Offset(0, 1),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            child: Center(
-                              child: value == 0
-                                  ? null
-                                  : Text(
-                                      '$value',
-                                      style: TextStyle(
-                                        fontSize: _getFontSize(value),
-                                        fontWeight: FontWeight.bold,
-                                        color: _getTextColor(value),
-                                      ),
-                                    ),
-                            ),
-                          );
+                          if (dx.abs() > dy.abs()) {
+                            if (dx > 0) {
+                              _moveRight();
+                            } else {
+                              _moveLeft();
+                            }
+                          } else {
+                            if (dy > 0) {
+                              _moveDown();
+                            } else {
+                              _moveUp();
+                            }
+                          }
                         },
+                        child: SizedBox(
+                          width: _getGridSize(),
+                          height: _getGridSize(),
+                          child: GridView.builder(
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: gridSize,
+                                  crossAxisSpacing: _getSpacing(),
+                                  mainAxisSpacing: _getSpacing(),
+                                ),
+                            itemCount: gridSize * gridSize,
+                            itemBuilder: (context, index) {
+                              final i = index ~/ gridSize;
+                              final j = index % gridSize;
+                              final value = grid[i][j];
+
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: _getTileColor(value),
+                                  borderRadius: BorderRadius.circular(
+                                    _getBorderRadius(),
+                                  ),
+                                  boxShadow: value != 0
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            blurRadius: 2,
+                                            offset: const Offset(0, 1),
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                child: Center(
+                                  child: value == 0
+                                      ? null
+                                      : Text(
+                                          '$value',
+                                          style: TextStyle(
+                                            fontSize: _getFontSize(value),
+                                            fontWeight: FontWeight.bold,
+                                            color: _getTextColor(value),
+                                          ),
+                                        ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ),
-            ),
-          ),
 
-          // Controls hint
-          Padding(
-            padding: EdgeInsets.only(
-              left: 16.0,
-              right: 16.0,
-              top: gridSize >= 8 ? 8.0 : 16.0,
-              bottom: gridSize >= 8 ? 8.0 : 16.0,
-            ),
-            child: Text(
-              'Swipe in any direction to move tiles',
-              style: TextStyle(
-                fontSize: gridSize >= 8 ? 14 : 16,
-                color: Colors.grey,
+                    // Game Over Overlay
+                    if (gameOver)
+                      Container(
+                        width: _getGridSize() + 12,
+                        height: _getGridSize() + 12,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                score == highScore && score > 0
+                                    ? '🎉 New High Score!'
+                                    : '💀 Game Over',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Score: $score\nBest: $highScore',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 18,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _initializeGame();
+                                  });
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange[600],
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 32,
+                                    vertical: 16,
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Try Again',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // Win Overlay
+                    if (won && !gameOver)
+                      Container(
+                        width: _getGridSize() + 12,
+                        height: _getGridSize() + 12,
+                        decoration: BoxDecoration(
+                          color: Colors.green.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                '🎉 You Win!',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'You reached 2048 in 2K48!\nKeep playing to get higher scores',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 16,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 24),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        won = false;
+                                      });
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.white,
+                                      foregroundColor: Colors.green[700],
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'Continue',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      setState(() {
+                                        _initializeGame();
+                                      });
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.orange[600],
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 20,
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'New Game',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
