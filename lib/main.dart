@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math';
 
 void main() {
@@ -33,13 +34,39 @@ class _Game2048State extends State<Game2048> {
   int gridSize = 4; // Default to 4x4
   List<List<int>> grid = List.generate(4, (_) => List.filled(4, 0));
   int score = 0;
+  int highScore = 0;
   bool gameOver = false;
   bool won = false;
+  
+  // Undo functionality
+  List<List<int>>? previousGrid;
+  int? previousScore;
+  bool canUndo = false;
 
   @override
   void initState() {
     super.initState();
+    _loadHighScore();
     _initializeGame();
+  }
+
+  Future<void> _loadHighScore() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      highScore = prefs.getInt('high_score') ?? 0;
+    });
+  }
+
+  Future<void> _saveHighScore() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('high_score', highScore);
+  }
+
+  void _updateHighScore() {
+    if (score > highScore) {
+      highScore = score;
+      _saveHighScore();
+    }
   }
 
   void _initializeGame() {
@@ -47,6 +74,9 @@ class _Game2048State extends State<Game2048> {
     score = 0;
     gameOver = false;
     won = false;
+    previousGrid = null;
+    previousScore = null;
+    canUndo = false;
     _addRandomTile();
     _addRandomTile();
   }
@@ -57,8 +87,30 @@ class _Game2048State extends State<Game2048> {
     score = 0;
     gameOver = false;
     won = false;
+    previousGrid = null;
+    previousScore = null;
+    canUndo = false;
     _addRandomTile();
     _addRandomTile();
+  }
+
+  void _saveState() {
+    previousGrid = grid.map((row) => List<int>.from(row)).toList();
+    previousScore = score;
+  }
+
+  void _undo() {
+    if (canUndo && previousGrid != null && previousScore != null) {
+      setState(() {
+        grid = previousGrid!.map((row) => List<int>.from(row)).toList();
+        score = previousScore!;
+        gameOver = false;
+        won = false;
+        canUndo = false;
+        previousGrid = null;
+        previousScore = null;
+      });
+    }
   }
 
   double _getGridSize() {
@@ -66,11 +118,11 @@ class _Game2048State extends State<Game2048> {
       case 4:
         return 320;
       case 6:
-        return 360;
+        return 350;
       case 8:
-        return 400;
+        return 370;
       case 10:
-        return 440;
+        return 390;
       default:
         return 320;
     }
@@ -80,21 +132,51 @@ class _Game2048State extends State<Game2048> {
     double baseFontSize;
     switch (gridSize) {
       case 4:
-        baseFontSize = value >= 1000 ? 20 : 28;
+        baseFontSize = value >= 1000 ? 22 : 30;
         break;
       case 6:
-        baseFontSize = value >= 1000 ? 16 : 22;
+        baseFontSize = value >= 1000 ? 16 : 20;
         break;
       case 8:
-        baseFontSize = value >= 1000 ? 14 : 18;
-        break;
-      case 10:
         baseFontSize = value >= 1000 ? 12 : 16;
         break;
+      case 10:
+        baseFontSize = value >= 1000 ? 10 : 14;
+        break;
       default:
-        baseFontSize = value >= 1000 ? 20 : 28;
+        baseFontSize = value >= 1000 ? 22 : 30;
     }
     return baseFontSize;
+  }
+
+  double _getSpacing() {
+    switch (gridSize) {
+      case 4:
+        return 8;
+      case 6:
+        return 6;
+      case 8:
+        return 4;
+      case 10:
+        return 3;
+      default:
+        return 8;
+    }
+  }
+
+  double _getBorderRadius() {
+    switch (gridSize) {
+      case 4:
+        return 6;
+      case 6:
+        return 4;
+      case 8:
+        return 3;
+      case 10:
+        return 2;
+      default:
+        return 6;
+    }
   }
 
   void _addRandomTile() {
@@ -134,24 +216,36 @@ class _Game2048State extends State<Game2048> {
   }
 
   void _moveLeft() {
+    if (gameOver) return;
+    
+    _saveState();
     bool moved = false;
+
     for (int i = 0; i < gridSize; i++) {
-      List<int> row = grid[i].where((cell) => cell != 0).toList();
+      List<int> row = [];
+      // Collect non-zero values
+      for (int j = 0; j < gridSize; j++) {
+        if (grid[i][j] != 0) row.add(grid[i][j]);
+      }
+
+      // Merge tiles
       for (int j = 0; j < row.length - 1; j++) {
         if (row[j] == row[j + 1]) {
           row[j] *= 2;
           score += row[j];
           if (row[j] == 2048 && !won) {
             won = true;
-            Future.microtask(() => _showWinDialog());
           }
           row.removeAt(j + 1);
         }
       }
+
+      // Fill with zeros
       while (row.length < gridSize) {
         row.add(0);
       }
 
+      // Update grid and check if moved
       for (int j = 0; j < gridSize; j++) {
         if (grid[i][j] != row[j]) moved = true;
         grid[i][j] = row[j];
@@ -160,73 +254,100 @@ class _Game2048State extends State<Game2048> {
 
     if (moved) {
       _addRandomTile();
+      _updateHighScore();
+      canUndo = true;
       if (!_canMove()) {
         gameOver = true;
-        Future.microtask(() => _showGameOverDialog());
       }
       setState(() {});
+    } else {
+      canUndo = false;
     }
   }
 
   void _moveRight() {
+    if (gameOver) return;
+    
+    _saveState();
     bool moved = false;
+
     for (int i = 0; i < gridSize; i++) {
-      List<int> row = grid[i].where((cell) => cell != 0).toList();
-      for (int j = row.length - 1; j > 0; j--) {
-        if (row[j] == row[j - 1]) {
+      List<int> row = [];
+      // Collect non-zero values from right to left
+      for (int j = gridSize - 1; j >= 0; j--) {
+        if (grid[i][j] != 0) row.add(grid[i][j]);
+      }
+
+      // Merge tiles
+      for (int j = 0; j < row.length - 1; j++) {
+        if (row[j] == row[j + 1]) {
           row[j] *= 2;
           score += row[j];
           if (row[j] == 2048 && !won) {
             won = true;
-            Future.microtask(() => _showWinDialog());
           }
-          row.removeAt(j - 1);
-          j--;
+          row.removeAt(j + 1);
         }
       }
+
+      // Fill with zeros at the end
       while (row.length < gridSize) {
-        row.insert(0, 0);
+        row.add(0);
       }
 
+      // Update grid from right to left and check if moved
       for (int j = 0; j < gridSize; j++) {
-        if (grid[i][j] != row[j]) moved = true;
-        grid[i][j] = row[j];
+        int newValue = row[j];
+        int gridPos = gridSize - 1 - j;
+        if (grid[i][gridPos] != newValue) moved = true;
+        grid[i][gridPos] = newValue;
       }
     }
 
     if (moved) {
       _addRandomTile();
+      _updateHighScore();
+      canUndo = true;
       if (!_canMove()) {
         gameOver = true;
-        Future.microtask(() => _showGameOverDialog());
       }
       setState(() {});
+    } else {
+      canUndo = false;
     }
   }
 
   void _moveUp() {
+    if (gameOver) return;
+    
+    _saveState();
     bool moved = false;
+
     for (int j = 0; j < gridSize; j++) {
       List<int> column = [];
+      // Collect non-zero values from top to bottom
       for (int i = 0; i < gridSize; i++) {
         if (grid[i][j] != 0) column.add(grid[i][j]);
       }
 
+      // Merge tiles
       for (int i = 0; i < column.length - 1; i++) {
         if (column[i] == column[i + 1]) {
           column[i] *= 2;
           score += column[i];
           if (column[i] == 2048 && !won) {
             won = true;
-            Future.microtask(() => _showWinDialog());
           }
           column.removeAt(i + 1);
         }
       }
+
+      // Fill with zeros
       while (column.length < gridSize) {
         column.add(0);
       }
 
+      // Update grid and check if moved
       for (int i = 0; i < gridSize; i++) {
         if (grid[i][j] != column[i]) moved = true;
         grid[i][j] = column[i];
@@ -235,51 +356,66 @@ class _Game2048State extends State<Game2048> {
 
     if (moved) {
       _addRandomTile();
+      _updateHighScore();
+      canUndo = true;
       if (!_canMove()) {
         gameOver = true;
-        Future.microtask(() => _showGameOverDialog());
       }
       setState(() {});
+    } else {
+      canUndo = false;
     }
   }
 
   void _moveDown() {
+    if (gameOver) return;
+    
+    _saveState();
     bool moved = false;
+
     for (int j = 0; j < gridSize; j++) {
       List<int> column = [];
-      for (int i = 0; i < gridSize; i++) {
+      // Collect non-zero values from bottom to top
+      for (int i = gridSize - 1; i >= 0; i--) {
         if (grid[i][j] != 0) column.add(grid[i][j]);
       }
 
-      for (int i = column.length - 1; i > 0; i--) {
-        if (column[i] == column[i - 1]) {
+      // Merge tiles
+      for (int i = 0; i < column.length - 1; i++) {
+        if (column[i] == column[i + 1]) {
           column[i] *= 2;
           score += column[i];
           if (column[i] == 2048 && !won) {
             won = true;
-            Future.microtask(() => _showWinDialog());
           }
-          column.removeAt(i - 1);
-          i--;
+          column.removeAt(i + 1);
         }
       }
+
+      // Fill with zeros at the end
       while (column.length < gridSize) {
-        column.insert(0, 0);
+        column.add(0);
       }
 
-      for (int i = 0; i < gridSize; i++) {
-        if (grid[i][j] != column[i]) moved = true;
-        grid[i][j] = column[i];
+      // Update grid from bottom to top and check if moved
+      for (int i = 0; i < column.length; i++) {
+        int newValue = column[i];
+        int gridPos = gridSize - 1 - i;
+        if (grid[gridPos][j] != newValue) moved = true;
+        grid[gridPos][j] = newValue;
       }
     }
 
     if (moved) {
       _addRandomTile();
+      _updateHighScore();
+      canUndo = true;
       if (!_canMove()) {
         gameOver = true;
-        Future.microtask(() => _showGameOverDialog());
       }
       setState(() {});
+    } else {
+      canUndo = false;
     }
   }
 
@@ -312,13 +448,18 @@ class _Game2048State extends State<Game2048> {
   }
 
   void _showGameOverDialog() {
+    bool newHighScore = score == highScore && score > 0;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('💀 Game Over'),
-          content: Text('Final Score: $score\nTry again?'),
+          title: Text(newHighScore ? '🎉 New High Score!' : '💀 Game Over'),
+          content: Text(
+            newHighScore
+                ? 'Congratulations! New high score: $score\nTry to beat it!'
+                : 'Final Score: $score\nHigh Score: $highScore\nTry again?',
+          ),
           actions: [
             TextButton(
               onPressed: () {
@@ -428,24 +569,71 @@ class _Game2048State extends State<Game2048> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Score display
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.orange[600],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Score: $score',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                // Score displays
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[600],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'SCORE',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '$score',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[700],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'BEST',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '$highScore',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
 
                 // New Game button
@@ -473,86 +661,109 @@ class _Game2048State extends State<Game2048> {
           ),
 
           // Game instructions
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.0),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Text(
               'Swipe to move tiles. When two tiles with the same number touch, they merge into one!',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+              style: TextStyle(
+                fontSize: gridSize >= 8 ? 12 : 14,
+                color: Colors.grey,
+              ),
             ),
           ),
 
-          const SizedBox(height: 10),
+          SizedBox(height: gridSize >= 8 ? 6 : 10),
 
           // Game Grid
           Expanded(
             child: Center(
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey[400],
-                  borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: gridSize >= 8 ? 12.0 : 16.0,
                 ),
-                child: GestureDetector(
-                  onPanEnd: (details) {
-                    if (gameOver) return;
-
-                    final velocity = details.velocity.pixelsPerSecond;
-                    final dx = velocity.dx;
-                    final dy = velocity.dy;
-
-                    if (dx.abs() > dy.abs()) {
-                      if (dx > 0) {
-                        _moveRight();
-                      } else {
-                        _moveLeft();
-                      }
-                    } else {
-                      if (dy > 0) {
-                        _moveDown();
-                      } else {
-                        _moveUp();
-                      }
-                    }
-                  },
-                  child: SizedBox(
-                    width: _getGridSize(),
-                    height: _getGridSize(),
-                    child: GridView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: gridSize,
-                        crossAxisSpacing: gridSize >= 8 ? 4 : 8,
-                        mainAxisSpacing: gridSize >= 8 ? 4 : 8,
+                child: Container(
+                  padding: EdgeInsets.all(gridSize >= 8 ? 4 : 6),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(gridSize >= 8 ? 8 : 12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: gridSize >= 8 ? 6 : 8,
+                        offset: const Offset(0, 4),
                       ),
-                      itemCount: gridSize * gridSize,
-                      itemBuilder: (context, index) {
-                        final i = index ~/ gridSize;
-                        final j = index % gridSize;
-                        final value = grid[i][j];
+                    ],
+                  ),
+                  child: GestureDetector(
+                    onPanEnd: (details) {
+                      if (gameOver) return;
 
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          decoration: BoxDecoration(
-                            color: _getTileColor(value),
-                            borderRadius: BorderRadius.circular(
-                              gridSize >= 8 ? 2 : 4,
+                      final velocity = details.velocity.pixelsPerSecond;
+                      final dx = velocity.dx;
+                      final dy = velocity.dy;
+
+                      if (dx.abs() > dy.abs()) {
+                        if (dx > 0) {
+                          _moveRight();
+                        } else {
+                          _moveLeft();
+                        }
+                      } else {
+                        if (dy > 0) {
+                          _moveDown();
+                        } else {
+                          _moveUp();
+                        }
+                      }
+                    },
+                    child: SizedBox(
+                      width: _getGridSize(),
+                      height: _getGridSize(),
+                      child: GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: gridSize,
+                          crossAxisSpacing: _getSpacing(),
+                          mainAxisSpacing: _getSpacing(),
+                        ),
+                        itemCount: gridSize * gridSize,
+                        itemBuilder: (context, index) {
+                          final i = index ~/ gridSize;
+                          final j = index % gridSize;
+                          final value = grid[i][j];
+
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: _getTileColor(value),
+                              borderRadius: BorderRadius.circular(
+                                _getBorderRadius(),
+                              ),
+                              boxShadow: value != 0
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 2,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ]
+                                  : null,
                             ),
-                          ),
-                          child: Center(
-                            child: value == 0
-                                ? null
-                                : Text(
-                                    '$value',
-                                    style: TextStyle(
-                                      fontSize: _getFontSize(value),
-                                      fontWeight: FontWeight.bold,
-                                      color: _getTextColor(value),
+                            child: Center(
+                              child: value == 0
+                                  ? null
+                                  : Text(
+                                      '$value',
+                                      style: TextStyle(
+                                        fontSize: _getFontSize(value),
+                                        fontWeight: FontWeight.bold,
+                                        color: _getTextColor(value),
+                                      ),
                                     ),
-                                  ),
-                          ),
-                        );
-                      },
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
                 ),
@@ -561,11 +772,19 @@ class _Game2048State extends State<Game2048> {
           ),
 
           // Controls hint
-          const Padding(
-            padding: EdgeInsets.all(16.0),
+          Padding(
+            padding: EdgeInsets.only(
+              left: 16.0,
+              right: 16.0,
+              top: gridSize >= 8 ? 8.0 : 16.0,
+              bottom: gridSize >= 8 ? 8.0 : 16.0,
+            ),
             child: Text(
               'Swipe in any direction to move tiles',
-              style: TextStyle(fontSize: 16, color: Colors.grey),
+              style: TextStyle(
+                fontSize: gridSize >= 8 ? 14 : 16,
+                color: Colors.grey,
+              ),
             ),
           ),
         ],
