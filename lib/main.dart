@@ -130,7 +130,7 @@ class _Game2048State extends State<Game2048> {
 
   void _moveRight() {
     bool moved = false;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < gridSize; i++) {
       List<int> row = grid[i].where((cell) => cell != 0).toList();
       for (int j = row.length - 1; j > 0; j--) {
         if (row[j] == row[j - 1]) {
@@ -144,11 +144,11 @@ class _Game2048State extends State<Game2048> {
           j--;
         }
       }
-      while (row.length < 4) {
+      while (row.length < gridSize) {
         row.insert(0, 0);
       }
 
-      for (int j = 0; j < 4; j++) {
+      for (int j = 0; j < gridSize; j++) {
         if (grid[i][j] != row[j]) moved = true;
         grid[i][j] = row[j];
       }
@@ -166,9 +166,9 @@ class _Game2048State extends State<Game2048> {
 
   void _moveUp() {
     bool moved = false;
-    for (int j = 0; j < 4; j++) {
+    for (int j = 0; j < gridSize; j++) {
       List<int> column = [];
-      for (int i = 0; i < 4; i++) {
+      for (int i = 0; i < gridSize; i++) {
         if (grid[i][j] != 0) column.add(grid[i][j]);
       }
 
@@ -183,11 +183,11 @@ class _Game2048State extends State<Game2048> {
           column.removeAt(i + 1);
         }
       }
-      while (column.length < 4) {
+      while (column.length < gridSize) {
         column.add(0);
       }
 
-      for (int i = 0; i < 4; i++) {
+      for (int i = 0; i < gridSize; i++) {
         if (grid[i][j] != column[i]) moved = true;
         grid[i][j] = column[i];
       }
@@ -205,9 +205,9 @@ class _Game2048State extends State<Game2048> {
 
   void _moveDown() {
     bool moved = false;
-    for (int j = 0; j < 4; j++) {
+    for (int j = 0; j < gridSize; j++) {
       List<int> column = [];
-      for (int i = 0; i < 4; i++) {
+      for (int i = 0; i < gridSize; i++) {
         if (grid[i][j] != 0) column.add(grid[i][j]);
       }
 
@@ -223,11 +223,11 @@ class _Game2048State extends State<Game2048> {
           i--;
         }
       }
-      while (column.length < 4) {
+      while (column.length < gridSize) {
         column.insert(0, 0);
       }
 
-      for (int i = 0; i < 4; i++) {
+      for (int i = 0; i < gridSize; i++) {
         if (grid[i][j] != column[i]) moved = true;
         grid[i][j] = column[i];
       }
@@ -376,6 +376,36 @@ class _Game2048State extends State<Game2048> {
             ),
           ),
 
+          // Grid size selector
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('Grid Size: ', style: TextStyle(fontSize: 16)),
+                const SizedBox(width: 10),
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment<int>(
+                      value: 4,
+                      label: Text('4x4'),
+                    ),
+                    ButtonSegment<int>(
+                      value: 6,
+                      label: Text('6x6'),
+                    ),
+                  ],
+                  selected: {gridSize},
+                  onSelectionChanged: (Set<int> newSelection) {
+                    _changeGridSize(newSelection.first);
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 10),
+
           // Game instructions
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16.0),
@@ -386,7 +416,7 @@ class _Game2048State extends State<Game2048> {
             ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
 
           // Game Grid
           Expanded(
@@ -420,20 +450,20 @@ class _Game2048State extends State<Game2048> {
                     }
                   },
                   child: SizedBox(
-                    width: 320,
-                    height: 320,
+                    width: gridSize == 4 ? 320 : 360,
+                    height: gridSize == 4 ? 320 : 360,
                     child: GridView.builder(
                       physics: const NeverScrollableScrollPhysics(),
                       gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 4,
+                          SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: gridSize,
                             crossAxisSpacing: 8,
                             mainAxisSpacing: 8,
                           ),
-                      itemCount: 16,
+                      itemCount: gridSize * gridSize,
                       itemBuilder: (context, index) {
-                        final i = index ~/ 4;
-                        final j = index % 4;
+                        final i = index ~/ gridSize;
+                        final j = index % gridSize;
                         final value = grid[i][j];
 
                         return Container(
@@ -447,7 +477,9 @@ class _Game2048State extends State<Game2048> {
                                 : Text(
                                     '$value',
                                     style: TextStyle(
-                                      fontSize: value >= 1000 ? 24 : 32,
+                                      fontSize: gridSize == 4
+                                          ? (value >= 1000 ? 24 : 32)
+                                          : (value >= 1000 ? 18 : 24),
                                       fontWeight: FontWeight.bold,
                                       color: _getTextColor(value),
                                     ),
